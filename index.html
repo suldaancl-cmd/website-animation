@@ -1,0 +1,153 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="Kaltuun — a design studio that brings colour to the coldest markets. Brand, identity, and motion at altitude." />
+    <title>Kaltuun — We Bring Colour to the Ice</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,300..800&family=Hanken+Grotesk:wght@300;400;500&family=Spline+Sans+Mono:wght@400;500&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="/src/style.css" />
+  </head>
+  <body>
+    <!-- Preloader -->
+    <div class="preloader" id="preloader">
+      <div class="preloader__inner">
+        <div class="preloader__name">KALTUUN</div>
+        <div class="preloader__bar"><span></span></div>
+        <div class="preloader__pct"><span id="loadPct">0</span>%</div>
+      </div>
+    </div>
+
+    <!-- WebGL canvas (iceberg) -->
+    <canvas id="webgl" class="webgl"></canvas>
+    <div class="grain" aria-hidden="true"></div>
+
+    <!-- Navigation -->
+    <nav class="nav">
+      <a href="/" class="nav__logo">KALTUUN</a>
+      <div class="nav__links">
+        <a href="#studio">Studio</a>
+        <a href="#work">Work</a>
+        <a href="#process">Process</a>
+      </div>
+      <a href="#contact" class="nav__cta">Start a project</a>
+    </nav>
+
+    <aside class="rail rail--left" aria-hidden="true"><span class="mono">N 64°08′ · ARCTIC</span></aside>
+    <aside class="rail rail--right" aria-hidden="true"><span class="mono" id="scrollPct">000</span></aside>
+
+    <main class="stack">
+      <!-- HERO -->
+      <section class="panel panel--hero" data-panel="hero">
+        <div class="hero__inner">
+          <span class="mono hero__eyebrow" data-reveal>Design Studio · Est. MMXXVI</span>
+          <h1 class="hero__title">
+            <span class="line"><span class="r">We bring</span></span>
+            <span class="line"><span class="r"><em>colour</em></span></span>
+            <span class="line"><span class="r">to the ice.</span></span>
+          </h1>
+          <p class="hero__sub" data-reveal>Brand systems, identity and motion for companies operating at the edge of their markets.</p>
+          <div class="hero__scroll" data-reveal>
+            <span class="mono">Scroll to explore</span>
+            <svg viewBox="0 0 12 28"><path d="M6 2 V24 M2 20 L6 24 L10 20" stroke="currentColor" stroke-width="1.2" fill="none"/></svg>
+          </div>
+        </div>
+      </section>
+
+      <!-- STUDIO -->
+      <section class="panel" id="studio" data-panel="studio">
+        <div class="panel__inner panel__inner--split">
+          <header class="col-head">
+            <span class="mono" data-reveal>01 — The Studio</span>
+            <h2 class="reveal-lines"><span class="line"><span class="r">Clarity is a</span></span><span class="line"><span class="r"><em>cold</em> discipline.</span></span></h2>
+          </header>
+          <div class="col-body">
+            <p data-reveal>Kaltuun is a small studio with a single belief: the strongest brands are the calmest ones. We strip away the noise until only the signal remains — then we give it colour.</p>
+            <p data-reveal>We work with founders who would rather be precise than loud. Whose markets are frozen, technical, or overlooked. We make them unmistakable.</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- WORK -->
+      <section class="panel" id="work" data-panel="work">
+        <header class="col-head col-head--center">
+          <span class="mono" data-reveal>02 — Selected Work</span>
+          <h2 class="reveal-lines"><span class="line"><span class="r">Six markets,</span></span><span class="line"><span class="r">one <em>signal</em>.</span></span></h2>
+        </header>
+        <div class="cards">
+          <article class="card" data-reveal-card>
+            <span class="card__idx mono">/ 01</span>
+            <h3>Glaciar</h3>
+            <p>Identity for an Arctic logistics group. Cool palette, warm intent.</p>
+            <span class="mono card__tag">Brand · Identity</span>
+          </article>
+          <article class="card" data-reveal-card>
+            <span class="card__idx mono">/ 02</span>
+            <h3>Aurora Capital</h3>
+            <p>A spectrum mark for a fund that backs the overlooked.</p>
+            <span class="mono card__tag">Identity · Motion</span>
+          </article>
+          <article class="card" data-reveal-card>
+            <span class="card__idx mono">/ 03</span>
+            <h3>Pelagic</h3>
+            <p>Wayfinding and web for a deep-sea research vessel.</p>
+            <span class="mono card__tag">Web · Systems</span>
+          </article>
+          <article class="card" data-reveal-card>
+            <span class="card__idx mono">/ 04</span>
+            <h3>Northwind</h3>
+            <p>Packaging that survives the cold and still feels human.</p>
+            <span class="mono card__tag">Packaging</span>
+          </article>
+          <article class="card" data-reveal-card>
+            <span class="card__idx mono">/ 05</span>
+            <h3>Solas</h3>
+            <p>A lighthouse brand for a maritime safety company.</p>
+            <span class="mono card__tag">Brand · Web</span>
+          </article>
+          <article class="card" data-reveal-card>
+            <span class="card__idx mono">/ 06</span>
+            <h3>Kelda</h3>
+            <p>Editorial identity for a glacial-water house.</p>
+            <span class="mono card__tag">Identity · Print</span>
+          </article>
+        </div>
+      </section>
+
+      <!-- PROCESS / STATS -->
+      <section class="panel" id="process" data-panel="process">
+        <div class="panel__inner">
+          <header class="col-head">
+            <span class="mono" data-reveal>03 — How we work</span>
+            <h2 class="reveal-lines"><span class="line"><span class="r">Measured in</span></span><span class="line"><span class="r"><em>millimetres</em>.</span></span></h2>
+          </header>
+          <div class="stats">
+            <div class="stat" data-reveal><span class="stat__num" data-count="48">0</span><span class="mono">Brands shipped</span></div>
+            <div class="stat" data-reveal><span class="stat__num" data-count="14">0</span><span class="mono">Countries</span></div>
+            <div class="stat" data-reveal><span class="stat__num" data-count="6">0</span><span class="mono">Week sprints</span></div>
+            <div class="stat" data-reveal><span class="stat__num" data-count="100">0</span><span class="mono">% in-house</span></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- CONTACT -->
+      <section class="panel panel--end" id="contact" data-panel="end">
+        <div class="panel__inner">
+          <h2 class="end__title reveal-lines"><span class="line"><span class="r">Bring colour</span></span><span class="line"><span class="r">to your <em>market</em>.</span></span></h2>
+          <a href="mailto:studio@kaltuun.example" class="btn" data-reveal>Start a project
+            <svg viewBox="0 0 24 12"><path d="M0 6 H22 M16 1 L22 6 L16 11" stroke="currentColor" stroke-width="1.2" fill="none"/></svg>
+          </a>
+          <footer class="foot">
+            <span class="mono">© Kaltuun — Design Studio</span>
+            <span class="mono">Reykjavík · Geneva</span>
+            <span class="mono">3D &amp; Animation — <a class="foot__credit" href="https://karimaballa.com/" target="_blank" rel="noopener">Karim Aballa</a></span>
+          </footer>
+        </div>
+      </section>
+    </main>
+
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>
