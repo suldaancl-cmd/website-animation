@@ -1,0 +1,9 @@
+node_modules/
+dist/
+*.local
+.DS_Store
+.env
+.env.*
+
+# excluded from public repo (tooling)
+blender-mcp-addon.py
