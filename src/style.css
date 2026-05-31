@@ -24,6 +24,11 @@ html, body { height: 100%; }
 
 html {
   background:
+    /* soft aurora blooms over the arctic base — matches the 3D backdrop */
+    radial-gradient(38% 30% at 18% 16%, rgba(90,209,200,0.18), transparent 70%),
+    radial-gradient(40% 32% at 82% 22%, rgba(106,166,255,0.16), transparent 70%),
+    radial-gradient(46% 36% at 60% 78%, rgba(185,140,255,0.15), transparent 72%),
+    radial-gradient(36% 28% at 24% 88%, rgba(255,143,176,0.12), transparent 72%),
     radial-gradient(120% 90% at 70% 12%, #f3f8fb 0%, #dde9f0 38%, #bcd2de 72%, #9cbccd 100%);
   background-attachment: fixed;
   color: var(--ink);

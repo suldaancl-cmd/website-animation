@@ -8,19 +8,31 @@ import { ScrollTrigger } from 'gsap/ScrollTrigger'
 import Lenis from 'lenis'
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js'
+import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js'
+import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js'
+import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js'
+import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js'
 
 gsap.registerPlugin(ScrollTrigger)
 
+// Respect the OS "reduce motion" setting (WCAG 2.3.3 / PRODUCT.md a11y).
+// When set: skip Lenis smooth-scroll (native scroll), and the render loop
+// freezes parallax / spin / drift to a calm static scene.
+const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches
+
 // ─── Lenis ─────────────────────────────────────────────────────────────
-const lenis = new Lenis({
-  duration: 1.1,
-  easing: (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
-  smoothWheel: true,
-})
-lenis.on('scroll', ScrollTrigger.update)
-gsap.ticker.add((t) => lenis.raf(t * 1000))
-gsap.ticker.lagSmoothing(0)
-if (import.meta.env.DEV) { window.__lenis = lenis; window.__ST = ScrollTrigger }
+if (!reduceMotion) {
+  const lenis = new Lenis({
+    duration: 1.1,
+    easing: (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
+    smoothWheel: true,
+  })
+  lenis.on('scroll', ScrollTrigger.update)
+  gsap.ticker.add((t) => lenis.raf(t * 1000))
+  gsap.ticker.lagSmoothing(0)
+  if (import.meta.env.DEV) window.__lenis = lenis
+}
+if (import.meta.env.DEV) window.__ST = ScrollTrigger
 
 // ─── Renderer / scene ──────────────────────────────────────────────────
 const canvas = document.querySelector('#webgl')
@@ -33,15 +45,59 @@ const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true 
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
 renderer.setSize(sizes.w, sizes.h)
 renderer.toneMapping = THREE.ACESFilmicToneMapping
-renderer.toneMappingExposure = 1.1
+renderer.toneMappingExposure = 0.95
 renderer.outputColorSpace = THREE.SRGBColorSpace
 
 const scene = new THREE.Scene()
 scene.fog = new THREE.Fog(0xdce8ee, 14, 42)
 
+// In-scene backdrop. Arctic gradient base + soft aurora colour blooms so the
+// background carries the brand palette without going loud ("cold surface,
+// warm signal"). 2D texture so the colour spots can sit off-axis.
+function makeGradientTexture() {
+  const c = document.createElement('canvas')
+  c.width = 512; c.height = 512
+  const g = c.getContext('2d')
+  // arctic vertical base
+  const base = g.createLinearGradient(0, 0, 0, 512)
+  base.addColorStop(0.0, '#f3f8fb')
+  base.addColorStop(0.42, '#dde9f0')
+  base.addColorStop(0.72, '#bcd2de')
+  base.addColorStop(1.0, '#9cbccd')
+  g.fillStyle = base; g.fillRect(0, 0, 512, 512)
+  // aurora blooms — pale, screen-blended so they tint rather than overpower
+  g.globalCompositeOperation = 'screen'
+  const bloom = (x, y, r, col) => {
+    const rg = g.createRadialGradient(x, y, 0, x, y, r)
+    rg.addColorStop(0, col); rg.addColorStop(1, 'rgba(0,0,0,0)')
+    g.fillStyle = rg; g.fillRect(0, 0, 512, 512)
+  }
+  bloom(120, 130, 240, 'rgba(90,209,200,0.30)')   // teal, upper-left
+  bloom(400, 180, 260, 'rgba(106,166,255,0.28)')  // blue, upper-right
+  bloom(300, 380, 280, 'rgba(185,140,255,0.26)')  // violet, lower-centre
+  bloom(150, 430, 220, 'rgba(255,143,176,0.20)')  // pink, lower-left
+  g.globalCompositeOperation = 'source-over'
+  const tex = new THREE.CanvasTexture(c)
+  tex.colorSpace = THREE.SRGBColorSpace
+  return tex
+}
+scene.background = makeGradientTexture()
+
 const camera = new THREE.PerspectiveCamera(38, sizes.w / sizes.h, 0.1, 100)
 camera.position.set(0, 1.2, 13)
 camera.lookAt(0, 0.5, 0)
+
+// ─── Post-processing: bloom (glowing aurora) + subtle depth-of-field ────
+const composer = new EffectComposer(renderer)
+composer.addPass(new RenderPass(scene, camera))
+const bloom = new UnrealBloomPass(
+  new THREE.Vector2(sizes.w, sizes.h),
+  0.12,   // strength — very gentle; high bloom was blowing the ice to white
+  0.6,    // radius
+  1.1,    // threshold — keep ordinary surfaces out of the bloom entirely
+)
+composer.addPass(bloom)
+composer.addPass(new OutputPass())
 
 // ─── Environment (studio IBL → clean ice reflections) ──────────────────
 const pmrem = new THREE.PMREMGenerator(renderer)
@@ -61,6 +117,7 @@ const berg = new THREE.Group()
 scene.add(berg)
 
 let icebergMesh = null
+const bergMats = []   // ice materials, emissive cycled through aurora palette
 const loadMgr = new THREE.LoadingManager()
 const loader = new GLTFLoader(loadMgr)
 
@@ -83,13 +140,34 @@ loader.load('/models/kaltuun-iceberg.glb', (gltf) => {
   model.scale.setScalar(s)
   model.position.sub(center.multiplyScalar(s))
 
-  // Tint/clean the ice material in case GLB import looks flat
+  // Colour is BAKED into the mesh in Blender (per-vertex aurora ramp by height).
+  // We then FLOW it: onBeforeCompile injects a time-driven hue rotation so the
+  // baked aurora drifts across the facets, while PBR lighting still shapes the ice.
   model.traverse((o) => {
     if (o.isMesh) {
-      o.material.envMapIntensity = 1.25
-      o.material.roughness = Math.min(o.material.roughness ?? 0.2, 0.22)
-      o.material.flatShading = true
-      o.material.needsUpdate = true
+      const m = new THREE.MeshStandardMaterial({
+        color: 0xffffff,        // white base so baked vertex colours show true
+        vertexColors: true,     // <- read COLOR_0 from the Blender GLB
+        roughness: 0.5,
+        metalness: 0.0,
+        flatShading: true,
+        envMapIntensity: 0.2,   // cut the white IBL reflection that washed the colour out
+        emissive: new THREE.Color(0xffffff),
+        emissiveIntensity: 0.35, // modest: lit colour leads, no white overexposure
+      })
+      m.onBeforeCompile = (shader) => {
+        shader.uniforms.uTime = { value: 0 }
+        shader.vertexShader = shader.vertexShader
+          .replace('#include <common>', '#include <common>\nvarying float vFlowY;')
+          .replace('#include <begin_vertex>', '#include <begin_vertex>\nvFlowY = position.y;')
+        shader.fragmentShader = shader.fragmentShader
+          .replace('#include <common>', '#include <common>\nuniform float uTime;\nvarying float vFlowY;\nvec3 hueRot(vec3 c, float a){vec3 k=vec3(0.57735);float cs=cos(a),sn=sin(a);return c*cs+cross(k,c)*sn+k*dot(k,c)*(1.0-cs);}\nvec3 sat(vec3 c,float s){float l=dot(c,vec3(0.299,0.587,0.114));return mix(vec3(l),c,s);}')
+          .replace('#include <color_fragment>', '#include <color_fragment>\nvec3 aur = sat(hueRot(vColor.rgb, sin(vFlowY*0.9 + uTime*0.6)*0.9 + uTime*0.25), 2.4);\ndiffuseColor.rgb = aur;')
+          .replace('#include <emissivemap_fragment>', '#include <emissivemap_fragment>\ntotalEmissiveRadiance = sat(hueRot(vColor.rgb, sin(vFlowY*0.9 + uTime*0.6)*0.9 + uTime*0.25), 2.4) * 0.35;')
+        m.userData.shader = shader
+      }
+      o.material = m
+      bergMats.push(m)
       o.castShadow = o.receiveShadow = false
     }
   })
@@ -114,6 +192,63 @@ const snow = new THREE.Points(snowGeo, new THREE.PointsMaterial({
 }))
 scene.add(snow)
 
+// ─── Aurora curtain (the "colour to the ice" motif, in 3D) ─────────────
+// Custom shader: flowing vertical bands cycling the brand palette. Additive,
+// fog-free, behind the iceberg. Intensity grows with scroll progress.
+const auroraMat = new THREE.ShaderMaterial({
+  transparent: true,
+  depthWrite: false,
+  blending: THREE.NormalBlending,   // light background: additive washes out
+  side: THREE.DoubleSide,
+  uniforms: { uTime: { value: 0 }, uProgress: { value: 0 }, uHue: { value: 0 } },
+  vertexShader: /* glsl */`
+    varying vec2 vUv;
+    void main() {
+      vUv = uv;
+      gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+    }
+  `,
+  fragmentShader: /* glsl */`
+    uniform float uTime;
+    uniform float uProgress;
+    uniform float uHue;
+    varying vec2 vUv;
+    // brand aurora ramp: teal → blue → violet → pink → amber
+    vec3 palette(float t) {
+      vec3 a = vec3(0.353,0.819,0.784);
+      vec3 b = vec3(0.416,0.651,1.000);
+      vec3 c = vec3(0.725,0.549,1.000);
+      vec3 d = vec3(1.000,0.561,0.690);
+      vec3 e = vec3(1.000,0.722,0.420);
+      float x = fract(t) * 4.0;
+      if (x < 1.0) return mix(a, b, x);
+      if (x < 2.0) return mix(b, c, x - 1.0);
+      if (x < 3.0) return mix(c, d, x - 2.0);
+      return mix(d, e, x - 3.0);
+    }
+    void main() {
+      vec2 uv = vUv;
+      float wave = sin(uv.x * 8.0 + uTime * 0.6) * 0.04
+                 + sin(uv.x * 17.0 - uTime * 0.9) * 0.02;
+      float y = uv.y + wave;
+      float curtain = smoothstep(0.0, 0.5, y) * smoothstep(1.0, 0.5, y);
+      float streak = 0.5 + 0.5 * sin(uv.x * 40.0 + sin(uv.x * 6.0 + uTime * 0.5) * 3.0 + uTime * 0.8);
+      streak = pow(streak, 2.0);
+      vec3 col = palette(uv.x * 0.6 + uTime * 0.03 + uProgress * 0.3 + uHue);
+      float alpha = curtain * (0.30 + 0.50 * streak) * (0.45 + 0.55 * uProgress);
+      gl_FragColor = vec4(col, alpha * 0.8);
+    }
+  `,
+})
+const aurora = new THREE.Mesh(new THREE.PlaneGeometry(46, 24, 1, 1), auroraMat)
+aurora.position.set(0, 6, -11)
+scene.add(aurora)
+
+// Coloured light that cycles the palette → the white ice picks up shifting colour
+const auroraLight = new THREE.PointLight(0x6aa6ff, 2.2, 22, 2)
+auroraLight.position.set(-3, 5, 4)
+scene.add(auroraLight)
+
 // ─── Camera scroll path ────────────────────────────────────────────────
 const keys = [
   { p: new THREE.Vector3(0, 1.2, 13),   l: new THREE.Vector3(0, 0.6, 0),  rot: 0.0 },   // hero
@@ -124,24 +259,41 @@ const keys = [
 ]
 const tA = new THREE.Vector3(), tB = new THREE.Vector3(), look = new THREE.Vector3()
 const smooth = (f) => f * f * (3 - 2 * f)
+
+// pointer parallax + scroll-reactive spin (immersion)
+const pointer = { tx: 0, ty: 0, x: 0, y: 0 }
+let spinExtra = 0
+addEventListener('pointermove', (e) => {
+  pointer.tx = (e.clientX / window.innerWidth - 0.5) * 2
+  pointer.ty = (e.clientY / window.innerHeight - 0.5) * 2
+}, { passive: true })
+
 function sampleCamera(progress) {
   const segs = keys.length - 1
   const s = Math.min(progress * segs, segs - 1e-5)
   const i = Math.floor(s)
   const t = smooth(s - i)
   const a = keys[i], b = keys[i + 1]
-  camera.position.copy(tA.copy(a.p).lerp(b.p, t))
+  tA.copy(a.p).lerp(b.p, t)
+  camera.position.set(tA.x + pointer.x * 0.9, tA.y - pointer.y * 0.55, tA.z)
   look.copy(tB.copy(a.l).lerp(b.l, t))
   camera.lookAt(look)
-  berg.rotation.y = a.rot + (b.rot - a.rot) * t
+  berg.rotation.y = a.rot + (b.rot - a.rot) * t + spinExtra
 }
+
+// section hues (0..1): hero teal · studio blue · work violet · process pink · end amber
+const SECTION_HUES = [0.48, 0.58, 0.74, 0.92, 0.09]
+let litHue = SECTION_HUES[0]
 
 const scrollState = { p: 0 }
 ScrollTrigger.create({
   trigger: document.documentElement,
   start: 'top top',
   end: () => `+=${document.documentElement.scrollHeight - window.innerHeight}`,
-  onUpdate: (self) => { scrollState.p = self.progress },
+  onUpdate: (self) => {
+    scrollState.p = self.progress
+    if (!reduceMotion) spinExtra += self.getVelocity() * -0.00006  // flick the berg with scroll speed
+  },
 })
 if (import.meta.env.DEV) window.__scrollState = scrollState
 
@@ -195,22 +347,50 @@ const pctEl = document.getElementById('scrollPct')
 // ─── Render loop ───────────────────────────────────────────────────────
 const clock = new THREE.Clock()
 function tick() {
-  const e = clock.getElapsedTime()
+  const e = reduceMotion ? 0 : clock.getElapsedTime()
+  if (!reduceMotion) {
+    // ease pointer parallax + decay the scroll-spin back to rest
+    pointer.x += (pointer.tx - pointer.x) * 0.05
+    pointer.y += (pointer.ty - pointer.y) * 0.05
+    spinExtra *= 0.94
+  }
   sampleCamera(scrollState.p)
 
-  // idle float on the iceberg + drifting snow
+  // aurora curtain + section-synced colour-cycling light on the ice
+  auroraMat.uniforms.uTime.value = e
+  auroraMat.uniforms.uProgress.value = scrollState.p
+  // hue per section: teal → blue → violet → pink → amber (matches brand ramp)
+  const segs = SECTION_HUES.length - 1
+  const sp = Math.min(scrollState.p * segs, segs - 1e-5)
+  const si = Math.floor(sp), sf = sp - si
+  const targetHue = SECTION_HUES[si] + (SECTION_HUES[si + 1] - SECTION_HUES[si]) * sf
+  litHue += (targetHue - litHue) * 0.04                 // ease toward section hue
+  auroraLight.color.setHSL((litHue + 0.04 * Math.sin(e * 0.25) + 1) % 1, 0.78, 0.62)
+  auroraMat.uniforms.uHue.value = litHue
+  auroraLight.intensity = 2.4 + Math.sin(e * 0.8) * 0.4
+  auroraLight.position.x = Math.sin(e * 0.3) * 5
+  auroraLight.position.z = 3 + Math.cos(e * 0.3) * 3
+
+  // iceberg emissive glows through the section hue → colour ON the ice
+  for (const m of bergMats) {
+    if (m.userData.shader) m.userData.shader.uniforms.uTime.value = e  // drive the hue flow
+  }
+
+  // idle float on the iceberg + drifting snow (frozen when reduced motion)
   if (icebergMesh) icebergMesh.position.y = Math.sin(e * 0.5) * 0.08
   snow.rotation.y = e * 0.01
-  const pos = snowGeo.attributes.position
-  for (let i = 0; i < SNOW; i++) {
-    let y = pos.getY(i) - 0.01
-    if (y < -15) y = 15
-    pos.setY(i, y)
+  if (!reduceMotion) {
+    const pos = snowGeo.attributes.position
+    for (let i = 0; i < SNOW; i++) {
+      let y = pos.getY(i) - 0.01
+      if (y < -15) y = 15
+      pos.setY(i, y)
+    }
+    pos.needsUpdate = true
   }
-  pos.needsUpdate = true
 
   if (pctEl) pctEl.textContent = String(Math.round(scrollState.p * 100)).padStart(3, '0')
-  renderer.render(scene, camera)
+  composer.render()
   requestAnimationFrame(tick)
 }
 tick()
@@ -223,6 +403,9 @@ function applySize(w, h) {
   camera.updateProjectionMatrix()
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
   renderer.setSize(w, h, true)
+  composer.setSize(w, h)
+  composer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
+  bloom.setSize(w, h)
   ScrollTrigger.refresh()
 }
 const ro = new ResizeObserver((entries) => {

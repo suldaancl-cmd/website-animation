@@ -1,0 +1,146 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=1080, initial-scale=1" />
+<title>Kaltuun — Poster</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,300..800&family=Spline+Sans+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<style>
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+  :root{
+    --navy:#0a141d; --navy-2:#0f1f2c;
+    --ink:#eaf2f7; --mist:#9fb8c6;   /* lifted for AA-large on glass cards */
+    --display:'Bricolage Grotesque',system-ui,sans-serif;
+    --mono:'Spline Sans Mono',ui-monospace,monospace;
+
+    /* Type scale — 1.25 major third, base 20px (poster = fixed px, not clamp)
+       label 18 · body 20 · h3 25 · h2 31 · h1 39 · display 78 · hero 152 */
+    --fs-label:18px; --fs-body:20px; --fs-h3:25px;
+    --fs-h2:31px;    --fs-h1:39px;   --fs-hero:152px;
+    --lh-tight:.92;  --lh-snug:1.2;  --lh-body:1.45;
+    --ls-tight:-.04em; --ls-wide:.22em;
+  }
+  body{display:grid;place-items:center;background:#05080b;font-family:var(--display)}
+  .poster{
+    position:relative;width:1080px;height:1920px;overflow:hidden;color:var(--ink);
+    background:
+      radial-gradient(120% 70% at 78% 8%, #15324a 0%, #0c1d2b 42%, #0a141d 100%);
+  }
+  /* aurora mesh wash */
+  .mesh{position:absolute;inset:0;opacity:.85;mix-blend-mode:screen;
+    background:
+      radial-gradient(40% 30% at 22% 22%, rgba(90,209,200,.55), transparent 70%),
+      radial-gradient(42% 32% at 80% 30%, rgba(106,166,255,.50), transparent 70%),
+      radial-gradient(46% 34% at 60% 64%, rgba(185,140,255,.45), transparent 72%),
+      radial-gradient(40% 30% at 28% 72%, rgba(255,143,176,.40), transparent 72%),
+      radial-gradient(38% 26% at 78% 86%, rgba(255,184,107,.38), transparent 72%);
+    filter:blur(8px)}
+  .grain{position:absolute;inset:0;opacity:.06;pointer-events:none;mix-blend-mode:overlay;
+    background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='2'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>")}
+  .grid{position:absolute;inset:0;opacity:.5;pointer-events:none;
+    background-image:linear-gradient(rgba(234,242,247,.04) 1px,transparent 1px),linear-gradient(90deg,rgba(234,242,247,.04) 1px,transparent 1px);
+    background-size:90px 90px}
+  .wrap{position:relative;height:100%;display:flex;flex-direction:column;padding:96px 84px 84px}
+
+  .mono{font-family:var(--mono);text-transform:uppercase;letter-spacing:var(--ls-wide);font-size:var(--fs-label);color:var(--mist)}
+  .top{display:flex;justify-content:space-between;align-items:center}
+  .brand{font-weight:700;letter-spacing:.30em;text-indent:.30em;font-size:var(--fs-h3)}
+
+  /* hero geometry: layered aurora rings */
+  .hero-mark{position:relative;height:430px;margin:70px 0 30px;display:grid;place-items:center}
+  .ring{position:absolute;border-radius:50%;mix-blend-mode:screen;filter:blur(2px)}
+  .r1{width:360px;height:360px;background:conic-gradient(from 200deg,#5ad1c8,#6aa6ff,#b98cff,#ff8fb0,#ffb86b,#5ad1c8);opacity:.9;
+      -webkit-mask:radial-gradient(transparent 52%,#000 54%);mask:radial-gradient(transparent 52%,#000 54%)}
+  .r2{width:220px;height:220px;background:radial-gradient(circle at 40% 35%,#dff6ff,#6aa6ff 60%,#2a6ea8);opacity:.95}
+  .spark{position:absolute;font-size:0}
+
+  .title{margin-top:6px}
+  .title h1{font-weight:800;font-size:var(--fs-hero);line-height:var(--lh-tight);letter-spacing:var(--ls-tight);font-variation-settings:"opsz" 96}
+  .title .accent{background:linear-gradient(95deg,#5ad1c8,#6aa6ff 30%,#b98cff 58%,#ff8fb0 80%,#ffb86b);-webkit-background-clip:text;background-clip:text;color:transparent}
+  .sub{margin-top:34px;max-width:30ch;font-size:var(--fs-h2);line-height:var(--lh-body);color:#cbdbe6;font-weight:300}
+
+  .cards{margin-top:auto;display:grid;gap:18px}
+  .card{display:flex;align-items:center;gap:24px;padding:26px 30px;border:1px solid rgba(234,242,247,.12);border-radius:18px;
+    background:rgba(255,255,255,.045);backdrop-filter:blur(10px)}
+  .ic{flex:0 0 auto;width:54px;height:54px;display:grid;place-items:center;border-radius:14px;
+    background:linear-gradient(135deg,rgba(90,209,200,.25),rgba(185,140,255,.25));border:1px solid rgba(234,242,247,.14)}
+  .ic svg{width:28px;height:28px;stroke:#eaf2f7;stroke-width:1.6;fill:none}
+  .card b{font-weight:700;font-size:var(--fs-h3);letter-spacing:-.01em}
+  .card span{display:block;font-size:var(--fs-body);color:var(--mist);margin-top:4px;font-family:var(--mono);text-transform:uppercase;letter-spacing:.10em}
+
+  .foot{margin-top:40px;display:flex;justify-content:space-between;align-items:flex-end}
+  .foot .big{font-weight:700;font-size:var(--fs-h1);letter-spacing:-.02em}
+  .foot .loc{font-family:var(--mono);font-size:var(--fs-label);color:var(--mist);letter-spacing:.16em;text-transform:uppercase}
+  .qr{width:120px;height:120px;border-radius:14px;background:#eaf2f7;padding:12px}
+  .qr svg{width:100%;height:100%}
+</style>
+</head>
+<body>
+  <div class="poster">
+    <div class="mesh"></div>
+    <div class="grid"></div>
+    <div class="grain"></div>
+
+    <div class="wrap">
+      <div class="top">
+        <div class="brand">KALTUUN</div>
+        <div class="mono">Design Studio · Est. MMXXVI</div>
+      </div>
+
+      <div class="hero-mark">
+        <div class="ring r1"></div>
+        <div class="ring r2"></div>
+      </div>
+
+      <div class="title">
+        <h1>We bring<br><span class="accent">colour</span><br>to the ice.</h1>
+        <p class="sub">Brand systems, identity and motion for companies at the edge of their markets.</p>
+      </div>
+
+      <div class="cards">
+        <div class="card">
+          <span class="ic"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 3a9 9 0 0 0 0 18"/></svg></span>
+          <div><b>Identity & Brand Systems</b><span>Strip the noise · keep the signal</span></div>
+        </div>
+        <div class="card">
+          <span class="ic"><svg viewBox="0 0 24 24"><path d="M4 16l5-6 4 4 7-8"/><path d="M4 20h16"/></svg></span>
+          <div><b>Motion & 3D</b><span>Cinematic web, built in-house</span></div>
+        </div>
+        <div class="card">
+          <span class="ic"><svg viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="3"/><path d="M9 9h6v6H9z"/></svg></span>
+          <div><b>Web & Wayfinding</b><span>Systems that scale, calmly</span></div>
+        </div>
+        <div class="card">
+          <span class="ic"><svg viewBox="0 0 24 24"><path d="M12 2v20M2 12h20"/></svg></span>
+          <div><b>48 brands · 14 countries</b><span>6-week sprints · 100% in-house</span></div>
+        </div>
+      </div>
+
+      <div class="foot">
+        <div>
+          <div class="big">Start a project</div>
+          <div class="loc">Reykjavík · Geneva — kaltuun.studio</div>
+        </div>
+        <div class="qr">
+          <!-- decorative QR placeholder -->
+          <svg viewBox="0 0 100 100" shape-rendering="crispEdges">
+            <rect width="100" height="100" fill="#eaf2f7"/>
+            <g fill="#0a141d">
+              <rect x="6" y="6" width="26" height="26"/><rect x="12" y="12" width="14" height="14" fill="#eaf2f7"/><rect x="16" y="16" width="6" height="6" fill="#0a141d"/>
+              <rect x="68" y="6" width="26" height="26"/><rect x="74" y="12" width="14" height="14" fill="#eaf2f7"/><rect x="78" y="16" width="6" height="6" fill="#0a141d"/>
+              <rect x="6" y="68" width="26" height="26"/><rect x="12" y="74" width="14" height="14" fill="#eaf2f7"/><rect x="16" y="78" width="6" height="6" fill="#0a141d"/>
+              <rect x="40" y="6" width="6" height="6"/><rect x="52" y="6" width="6" height="6"/><rect x="40" y="18" width="6" height="6"/>
+              <rect x="6" y="40" width="6" height="6"/><rect x="18" y="40" width="6" height="6"/><rect x="30" y="40" width="6" height="6"/><rect x="42" y="40" width="6" height="6"/><rect x="54" y="40" width="6" height="6"/><rect x="66" y="40" width="6" height="6"/><rect x="78" y="40" width="6" height="6"/><rect x="90" y="40" width="4" height="6"/>
+              <rect x="40" y="52" width="6" height="6"/><rect x="58" y="52" width="6" height="6"/><rect x="72" y="52" width="6" height="6"/><rect x="88" y="52" width="6" height="6"/>
+              <rect x="44" y="64" width="6" height="6"/><rect x="60" y="64" width="6" height="6"/><rect x="84" y="64" width="6" height="6"/>
+              <rect x="40" y="76" width="6" height="6"/><rect x="52" y="82" width="6" height="6"/><rect x="68" y="76" width="6" height="6"/><rect x="80" y="84" width="6" height="6"/><rect x="90" y="76" width="4" height="6"/>
+            </g>
+          </svg>
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>
